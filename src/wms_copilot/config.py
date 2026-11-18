@@ -7,7 +7,20 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+
+def _resolve_root() -> Path:
+    """Raiz del proyecto.
+
+    En editable/local el paquete vive en <repo>/src/wms_copilot y hay pyproject.toml.
+    Instalado como wheel (Docker), no: se usa el directorio de trabajo (/app).
+    """
+    candidate = Path(__file__).resolve().parents[2]
+    if (candidate / "pyproject.toml").is_file():
+        return candidate
+    return Path.cwd()
+
+
+REPO_ROOT = _resolve_root()
 
 
 def _load_dotenv(path: Path | None = None) -> None:

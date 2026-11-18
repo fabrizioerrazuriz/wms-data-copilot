@@ -59,3 +59,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build de la imagen
         run: docker build -t wms-data-copilot:ci .
+      - name: Smoke test (la imagen arranca y hace bootstrap)
+        run: |
+          docker run --rm -e WMS_DB_URL=sqlite:////tmp/smoke.db wms-data-copilot:ci \
+            python -m wms_copilot.cli bootstrap

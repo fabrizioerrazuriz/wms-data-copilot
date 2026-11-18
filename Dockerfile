@@ -15,7 +15,10 @@ COPY kb ./kb
 # Las credenciales y la URL de la base se inyectan por entorno, nunca en la imagen.
 ENV WMS_LLM_PROVIDER=rule-based \
     WMS_EMBEDDING_PROVIDER=hashing \
-    WMS_DB_URL=postgresql+psycopg://wms:wms@db:5432/wms
+    WMS_DB_URL=postgresql+psycopg://wms:wms@db:5432/wms \
+    WMS_KB_DIR=/app/kb \
+    WMS_DATA_DIR=/app/data \
+    WMS_ARTIFACTS_DIR=/app/artifacts
 
 EXPOSE 8000
 
