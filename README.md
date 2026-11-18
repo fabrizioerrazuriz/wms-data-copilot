@@ -92,6 +92,18 @@ Detalle y decisiones en [docs/architecture.md](docs/architecture.md).
 
 ## Quickstart (2 minutos, sin API keys)
 
+**Windows, la forma más corta:** doble clic en `iniciar.cmd` (o ejecútalo desde la terminal). Crea el
+entorno si falta, genera los datos y abre el navegador en `http://127.0.0.1:8000`, donde puedes escribir la
+pregunta directamente.
+
+Para preguntar desde la terminal sin activar el entorno:
+
+```bat
+preguntar.cmd "¿Qué bodegas tienen saldo negativo?"
+```
+
+**Manual (Windows / Linux / macOS):**
+
 ```bash
 python -m venv .venv
 # Windows
@@ -112,7 +124,8 @@ Con `make`: `make install bootstrap ask Q="¿Qué bodegas tienen saldo negativo?
 
 ```bash
 python -m wms_copilot.cli serve
-# http://127.0.0.1:8000/docs
+# Interfaz web:  http://127.0.0.1:8000
+# Documentación: http://127.0.0.1:8000/docs
 curl -X POST http://127.0.0.1:8000/ask -H "Content-Type: application/json" \
   -d '{"question":"¿Cuáles son los productos con más salidas?"}'
 ```

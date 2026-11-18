@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -17,6 +18,7 @@ from ..db import connect, init_db, table_count
 from ..llm.factory import get_llm
 from ..rag.retriever import kb_stats
 from ..telemetry import configure_logging, get_logger, llm_metrics
+from .ui import INDEX_HTML
 
 logger = get_logger(__name__)
 
@@ -60,6 +62,12 @@ class AskResponse(BaseModel):
     cost_usd: float = 0.0
     error: str = ""
     request_id: str = ""
+
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def index() -> str:
+    """Interfaz web minima para preguntar sin usar curl."""
+    return INDEX_HTML
 
 
 @app.get("/health")

@@ -7,6 +7,14 @@ from fastapi.testclient import TestClient
 from wms_copilot.api.main import app
 
 
+def test_ui_root_serves_html(seeded: dict[str, int]) -> None:
+    with TestClient(app) as client:
+        response = client.get("/")
+    assert response.status_code == 200
+    assert "WMS" in response.text
+    assert "/ask" in response.text
+
+
 def test_health_reports_database_and_kb(seeded: dict[str, int]) -> None:
     with TestClient(app) as client:
         response = client.get("/health")
