@@ -1,0 +1,42 @@
+name: wms-data-copilot
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: wms
+      POSTGRES_PASSWORD: wms
+      POSTGRES_DB: wms
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wms -d wms"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      WMS_DB_URL: postgresql+psycopg://wms:wms@db:5432/wms
+      WMS_LLM_PROVIDER: ${WMS_LLM_PROVIDER:-rule-based}
+      WMS_LLM_MODEL: ${WMS_LLM_MODEL:-}
+      WMS_EMBEDDING_PROVIDER: ${WMS_EMBEDDING_PROVIDER:-hashing}
+      WMS_SQL_ROW_LIMIT: ${WMS_SQL_ROW_LIMIT:-200}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

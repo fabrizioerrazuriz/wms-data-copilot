@@ -1,0 +1,31 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Artefactos y datos generados (nunca se versionan)
+data/
+artifacts/
+*.db
+*.sqlite3
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Herramientas
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage.xml
+htmlcov/
+
+# Editores / sistema
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
