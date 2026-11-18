@@ -6,6 +6,7 @@ Todos los ejemplos de esta página están ejecutados y medidos, no son ilustrati
 | Capa | Archivo | Cómo se aplica | Qué cambia |
 |---|---|---|---|
 | **Datos** (inventario, OC, ETL) | `data/raw/*.csv` | `python -m wms_copilot.cli reset --yes` | las cifras y filas de las respuestas SQL y los hallazgos de calidad |
+| **Movimiento manual** (+/- unidades) | `data/raw/inventory_movements.csv` | `python -m wms_copilot.cli adjust SKU-0003 1000 --warehouse CD-03` | el saldo del producto en esa bodega |
 | **Documentación** (RAG) | `kb/*.md` | `python -m wms_copilot.cli reindex` | el texto de las respuestas de documentación y las fuentes citadas |
 | **Prompt y modelo** | `src/wms_copilot/llm/prompts.py`, `.env` | reiniciar la API | el SQL generado, el estilo y el pass rate de `eval` |
 
@@ -14,6 +15,53 @@ La regla de oro:
 - `bootstrap` **regenera** los CSV con el seed `20261101` y sobrescribe tus ediciones.
 - `reset --yes` **borra las tablas y recarga los CSV que ya tienes**, sin regenerarlos.
 - `load` solo carga lo que falte (no borra nada); úsalo para añadir filas nuevas.
+- `adjust` agrega un movimiento, calcula el `movement_id` siguiente y lo carga: es la forma segura de sumar
+  o restar unidades.
+
+## Agregar 1.000 unidades de un producto (sin editar el CSV)
+
+```powershell
+$py = ".\.venv\Scripts\python.exe"
+& $py -m wms_copilot.cli adjust SKU-0003 1000 --warehouse CD-03 --type IN --reason "Ingreso manual 1000 unidades"
+```
+
+Salida verificada:
+
+```json
+{
+  "movement_id": 2412,
+  "sku": "SKU-0003",
+  "warehouse": "CD-03",
+  "movement_type": "IN",
+  "quantity": 1000,
+  "inserted": 1,
+  "on_hand_before": 119,
+  "on_hand_after": 1119,
+  "reference_doc": "Ingreso manual 1000 unidades"
+}
+```
+
+Y el saldo total del producto pasa de `-990` a `10` (`-990 + 1000`).
+
+Detalles del comando:
+
+- `--warehouse` es obligatorio: el saldo es por producto **y** bodega.
+- `--type` por defecto es `ADJUST` (ajuste de inventario). Usa `IN` para un ingreso real y `OUT` para una
+  salida. Solo `ADJUST` acepta cantidad negativa.
+- `--reason` queda como `reference_doc`, así el movimiento es rastreable.
+- El movimiento se escribe en el CSV **y** se carga en la base. Es idempotente por `movement_id`: repetir
+  el comando agrega otro movimiento (es un alta, no una actualización).
+
+### No edites el CSV con Excel
+
+Si abres `data/raw/inventory_movements.csv` en Excel y guardas, Excel en español cambia el separador a
+`;`, reescribe las fechas como `DD-MM-AAAA` y puede dejar la fila con un `movement_id` duplicado. El
+pipeline ahora tolera las dos primeras cosas (detecta el separador y normaliza la fecha), pero el
+`movement_id` duplicado se rechaza como error estructural. Por eso, para agregar o quitar unidades usa
+`adjust`, no Excel.
+
+Además, `reset` valida el CSV **antes** de borrar: si no puede leer ninguna fila válida, aborta sin tocar
+los datos que ya están cargados.
 
 ---
 
@@ -42,6 +90,9 @@ Después: `4010` (porque `-990 + 5000 = 4010`).
 El SQL no cambió; cambió lo que devuelve. Eso es exactamente lo que se busca: **las cifras salen de la
 base, nunca del modelo**. Si repites `reset --yes`, el resultado sigue siendo `4010` (la recarga es
 idempotente por clave natural); si corres `bootstrap`, vuelve a `-990` porque regenera los CSV.
+
+Para sumar unidades sin tocar el CSV, el equivalente seguro es
+`adjust SKU-0003 1000 --warehouse CD-03` (ver arriba).
 
 Para revertir sin regenerar todo: elimina la línea con `DOC-DEMO-1` del CSV y vuelve a ejecutar `reset --yes`.
 

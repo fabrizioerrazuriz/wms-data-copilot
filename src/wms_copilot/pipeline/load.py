@@ -82,7 +82,11 @@ class LoadSummary:
 
 def read_csv(path: Path) -> list[dict[str, Any]]:
     with path.open("r", newline="", encoding="utf-8-sig") as handle:
-        return list(csv.DictReader(handle))
+        header = handle.readline()
+        handle.seek(0)
+        # Excel en es-CL guarda con ";" como separador de lista. Detectarlo evita perder el lote.
+        delimiter = ";" if header.count(";") > header.count(",") else ","
+        return list(csv.DictReader(handle, delimiter=delimiter))
 
 
 def _write_rejects(entity: str, report: ValidationReport) -> Path | None:
@@ -193,6 +197,22 @@ def load_all(raw_dir: Path | None = None, *, ensure_data: bool = True) -> list[L
     return summaries
 
 
+def _known_ids(raw: Path, table: str, column: str) -> set[int]:
+    """IDs de la base o, si esta vacia, del CSV: permite validar antes de borrar."""
+    ids = _ids(table, column)
+    if ids:
+        return ids
+    path = raw / f"{table}.csv"
+    if not path.is_file():
+        return set()
+    values = set()
+    for row in read_csv(path):
+        value = str(row.get(column, "")).strip()
+        if value.isdigit():
+            values.add(int(value))
+    return values
+
+
 def reset_data(raw_dir: Path | None = None) -> list[LoadSummary]:
     """Borra los datos del WMS (no la KB) y recarga desde los CSV actuales.
 
@@ -201,8 +221,21 @@ def reset_data(raw_dir: Path | None = None) -> list[LoadSummary]:
     """
     settings = get_settings()
     raw = Path(raw_dir or settings.data_dir / "raw")
-    if not (raw / "inventory_movements.csv").is_file():
+    movements_path = raw / "inventory_movements.csv"
+    if not movements_path.is_file():
         raise FileNotFoundError(f"No hay CSV en {raw}. Ejecuta primero: wms-copilot bootstrap")
+
+    # Guarda contra el accidente tipico: borrar todo y no poder leer ni una fila.
+    report = validate_movements(
+        read_csv(movements_path),
+        _known_ids(raw, "products", "product_id"),
+        _known_ids(raw, "warehouses", "warehouse_id"),
+    )
+    if not report.valid:
+        raise ValueError(
+            "Ninguna fila de inventory_movements.csv es valida; no se borro nada. "
+            f"Revisa el archivo (separador, fechas, ids). Primeros errores: {report.errors[:3]}"
+        )
 
     tables = ["data_quality_issues", "inventory_movements", "purchase_orders", "etl_runs", "products", "warehouses"]
     with get_engine().begin() as conn:

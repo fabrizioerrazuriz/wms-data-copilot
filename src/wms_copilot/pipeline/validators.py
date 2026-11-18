@@ -77,8 +77,15 @@ def _as_timestamp(row: dict, name: str) -> datetime:
         raise ValueError("fecha obligatoria vacia")
     try:
         return datetime.fromisoformat(value)
-    except ValueError as exc:
-        raise ValueError(f"fecha invalida '{value}' (se espera ISO-8601)") from exc
+    except ValueError:
+        pass
+    # Excel en es-CL reescribe las fechas como DD-MM-AAAA (con o sin cero inicial en la hora).
+    for fmt in ("%d-%m-%Y %H:%M:%S", "%d-%m-%Y %H:%M", "%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"fecha invalida '{value}' (se espera ISO-8601 o DD-MM-AAAA HH:MM)")
 
 
 def _as_enum(row: dict, name: str, allowed: set[str]) -> str:

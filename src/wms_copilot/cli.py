@@ -123,6 +123,24 @@ def cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_adjust(args: argparse.Namespace) -> int:
+    from .pipeline.adjust import add_movement
+
+    try:
+        result = add_movement(
+            sku=args.sku,
+            quantity=args.quantity,
+            warehouse=args.warehouse,
+            movement_type=args.type,
+            reason=args.reason or "",
+        )
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"No se pudo agregar el movimiento: {exc}", file=sys.stderr)
+        return 1
+    _print(result)
+    return 0
+
+
 def cmd_reindex(args: argparse.Namespace) -> int:
     _print(ingest_documents())
     return 0
@@ -168,6 +186,16 @@ def build_parser() -> argparse.ArgumentParser:
     reset = sub.add_parser("reset", help="Borra los datos del WMS y recarga desde los CSV actuales")
     reset.add_argument("--yes", action="store_true", help="Confirma el borrado de datos")
     reset.set_defaults(func=cmd_reset)
+
+    adjust = sub.add_parser("adjust", help="Agrega un movimiento (p. ej. +1000 unidades) y lo carga sin borrar datos")
+    adjust.add_argument("sku", help="SKU del producto, p. ej. SKU-0003")
+    adjust.add_argument("quantity", type=int, help="Unidades a agregar (negativo resta, solo con --type ADJUST)")
+    adjust.add_argument("--warehouse", required=True, help="Codigo de bodega, p. ej. CD-01")
+    adjust.add_argument(
+        "--type", default="ADJUST", choices=["ADJUST", "IN", "OUT", "TRANSFER"], help="Tipo de movimiento"
+    )
+    adjust.add_argument("--reason", default="", help="Documento o motivo (queda como reference_doc)")
+    adjust.set_defaults(func=cmd_adjust)
 
     ask = sub.add_parser("ask", help="Haz una pregunta al copiloto")
     ask.add_argument("question")
