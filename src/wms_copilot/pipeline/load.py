@@ -13,7 +13,7 @@ from typing import Any
 from sqlalchemy import text
 
 from ..config import get_settings
-from ..db import connect, init_db, insert_ignore, table_count
+from ..db import connect, get_engine, init_db, insert_ignore, table_count
 from ..telemetry import get_logger, log_event
 from .generate_synthetic import generate_all
 from .validators import (
@@ -191,6 +191,25 @@ def load_all(raw_dir: Path | None = None, *, ensure_data: bool = True) -> list[L
         raise
 
     return summaries
+
+
+def reset_data(raw_dir: Path | None = None) -> list[LoadSummary]:
+    """Borra los datos del WMS (no la KB) y recarga desde los CSV actuales.
+
+    Es la forma correcta de aplicar cambios en los CSV sin regenerarlos con el seed:
+    `bootstrap` siempre regenera, `reset` respeta lo que hayas editado a mano.
+    """
+    settings = get_settings()
+    raw = Path(raw_dir or settings.data_dir / "raw")
+    if not (raw / "inventory_movements.csv").is_file():
+        raise FileNotFoundError(f"No hay CSV en {raw}. Ejecuta primero: wms-copilot bootstrap")
+
+    tables = ["data_quality_issues", "inventory_movements", "purchase_orders", "etl_runs", "products", "warehouses"]
+    with get_engine().begin() as conn:
+        for table in tables:
+            conn.exec_driver_sql(f"DELETE FROM {table}")
+    log_event(logger, "data_reset", tables=tables)
+    return load_all(raw, ensure_data=False)
 
 
 def load_invalid_demo(raw_dir: Path | None = None) -> dict[str, Any]:

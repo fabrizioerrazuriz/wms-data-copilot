@@ -49,6 +49,18 @@ def test_load_is_idempotent(seeded: dict[str, int]) -> None:
     assert first[0].rows_after >= 60
 
 
+def test_reset_reloads_from_current_csv(seeded: dict[str, int]) -> None:
+    """reset aplica cambios de CSV sin regenerarlos con el seed."""
+    from wms_copilot.db import table_count
+    from wms_copilot.pipeline.load import reset_data
+
+    before = table_count("inventory_movements")
+    summaries = reset_data()
+    movements = next(summary for summary in summaries if summary.entity == "inventory_movements")
+    assert movements.inserted == before
+    assert table_count("inventory_movements") == before
+
+
 def test_business_anomalies_are_not_blocked(seeded: dict[str, int]) -> None:
     """Cantidad <= 0 es anomalia de negocio: entra a la base y la detecta el agente de calidad."""
     report = validate_movements(

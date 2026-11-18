@@ -6,6 +6,7 @@ import hashlib
 import math
 import os
 import re
+import unicodedata
 from functools import lru_cache
 
 import httpx
@@ -17,8 +18,11 @@ _TOKEN_RE = re.compile(r"[a-z0-9áéíóúñ]+")
 
 
 def _tokens(text: str) -> list[str]:
-    words = _TOKEN_RE.findall(text.lower())
-    # Palabras + bigramas de caracteres: captura algo de morfologia sin dependencias.
+    # Sin tildes: "cíclico" y "ciclico" deben ser el mismo token (importante en español).
+    decomposed = unicodedata.normalize("NFKD", text.lower())
+    plain = "".join(char for char in decomposed if not unicodedata.combining(char))
+    words = _TOKEN_RE.findall(plain)
+    # Palabras + n-gramas de caracteres: captura algo de morfologia sin dependencias.
     grams = [w[i : i + 4] for w in words if len(w) > 4 for i in range(len(w) - 3)]
     return words + grams
 

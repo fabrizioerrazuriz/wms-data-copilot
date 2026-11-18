@@ -10,6 +10,7 @@ y eso cuenta como fallo en el harness de evaluacion. Esa es la gracia.
 from __future__ import annotations
 
 import json
+import math
 import re
 import unicodedata
 
@@ -205,10 +206,65 @@ class RuleBasedProvider:
 
     @staticmethod
     def _extractive_answer(user: str) -> str:
-        blocks = re.findall(r"\[\d+\]\s*\(([^)]+)\)\s*(.+)", user)
+        """Baseline extractivo: elige la oracion del contexto con mayor solape con la pregunta."""
+        question = _extract_question(user)
+        blocks = re.findall(r"\[\d+\]\s*\(([^)]+)\)\s*(.+?)(?=\n\n\[\d+\]|\Z)", user, re.DOTALL)
         if not blocks:
             return "No encontre informacion suficiente en la base de conocimiento para responder."
-        ref, text = blocks[0]
-        sentences = re.split(r"(?<=[.!?])\s+", text.strip())
-        excerpt = " ".join(sentences[:2]).strip()
+
+        query_words = {
+            word for word in re.findall(r"[a-z0-9ñ]+", _normalize(question)) if len(word) > 3 and word not in STOPWORDS
+        }
+        # Peso por rareza dentro del contexto: una palabra que aparece en un solo bloque
+        # (p. ej. "duplicado") vale mas que una omnipresente ("carga").
+        normalized_blocks = [(ref, text, _normalize(text)) for ref, text in blocks]
+        weights = {
+            word: math.log(1 + len(blocks) / (1 + sum(1 for _, _, body in normalized_blocks if word in body)))
+            for word in query_words
+        }
+
+        best: tuple[float, str, str] | None = None
+        for ref, text, _ in normalized_blocks:
+            sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+            for index, sentence in enumerate(sentences):
+                normalized = _normalize(sentence)
+                score = sum(weight for word, weight in weights.items() if word in normalized)
+                if score and (best is None or score > best[0]):
+                    follow = sentences[index + 1] if index + 1 < len(sentences) else ""
+                    best = (score, ref, f"{sentence} {follow}".strip())
+
+        if best is None:
+            ref, text = blocks[0]
+            return f"{text.strip()[:280]} [{ref}]"
+        _, ref, excerpt = best
         return f"{excerpt} [{ref}]"
+
+
+STOPWORDS = {
+    "para",
+    "como",
+    "cuando",
+    "donde",
+    "porque",
+    "sobre",
+    "entre",
+    "desde",
+    "hasta",
+    "segun",
+    "este",
+    "esta",
+    "estos",
+    "estas",
+    "debe",
+    "deben",
+    "puede",
+    "hola",
+    "cada",
+    "cuanto",
+    "cuanta",
+    "hace",
+    "hacer",
+    "sirve",
+    "significa",
+    "documentacion",
+}

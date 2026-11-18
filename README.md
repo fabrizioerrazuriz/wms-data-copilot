@@ -165,6 +165,19 @@ python -m wms_copilot.cli quality --llm           # narrativa de calidad generad
 
 Con `WMS_LLM_PROVIDER=ollama` todo corre local: costo cero y los datos no salen de la máquina.
 
+## Modificar datos, documentación o prompt
+
+| Qué quieres cambiar | Edita | Aplica con |
+|---|---|---|
+| Inventario, órdenes de compra o ETL | `data/raw/*.csv` | `wms-copilot reset --yes` |
+| Documentación que cita el RAG | `kb/*.md` | `wms-copilot reindex` |
+| Modelo o proveedor | `.env` | reinicia `serve` |
+| Prompt | `src/wms_copilot/llm/prompts.py` (sube `PROMPT_VERSION`) | `wms-copilot eval` |
+
+`bootstrap` regenera los CSV con el seed y borra tus ediciones; `load` solo inserta lo que falte;
+`reset --yes` recarga tus CSV tal como están. Experimentos medidos paso a paso (dato → cifra distinta,
+sección nueva → nueva cita) en [docs/experimentos.md](docs/experimentos.md).
+
 ## Evaluación y CI
 
 - `src/wms_copilot/evals/golden_set.jsonl`: 20 casos versionados, con dificultad y notas.
@@ -172,7 +185,7 @@ Con `WMS_LLM_PROVIDER=ollama` todo corre local: costo cero y los datos no salen 
   importar el orden) y calcula soporte numérico de la respuesta, latencia p95 y costo.
 - El reporte se guarda en `artifacts/eval_report.json` con `prompt_version` y `schema_hash`: si cambia el
   prompt o el esquema, se ve en el diff.
-- GitHub Actions corre lint + 46 tests + bootstrap + escaneo de calidad + **gate de regresión**
+- GitHub Actions corre lint + 51 tests + bootstrap + escaneo de calidad + **gate de regresión**
   (`--min-pass 0.6`): un PR que empeora al agente rompe el build.
 
 ## Decisiones de diseño (y sus costos)
@@ -201,7 +214,7 @@ src/wms_copilot/
 dags/               DAG de Airflow (carga → KB → calidad → evals)
 kb/                 documentación operativa indexada por el RAG
 docs/               arquitectura, evals y ADRs
-tests/              46 tests (guardrails, idempotencia, RAG, API, métricas)
+tests/              51 tests (guardrails, idempotencia, RAG, API, métricas)
 ```
 
 ## Limitaciones conocidas

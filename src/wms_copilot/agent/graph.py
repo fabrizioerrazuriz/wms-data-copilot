@@ -50,6 +50,8 @@ DOCS_HINTS = (
     "diccionario",
     "segun la documentacion",
     "procedimiento",
+    "conteo ciclico",
+    "conteo de inventario",
 )
 
 

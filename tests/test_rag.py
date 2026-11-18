@@ -26,6 +26,21 @@ def test_hashing_embeddings_are_deterministic_and_normalized() -> None:
     assert 0.0 <= cosine(first, hashing_embedding("traslado entre bodegas")) < 1.0
 
 
+def test_hashing_embeddings_ignore_accents() -> None:
+    assert hashing_embedding("conteo cíclico") == hashing_embedding("conteo ciclico")
+
+
+def test_extractive_answer_picks_the_sentence_with_the_question_words() -> None:
+    prompt = (
+        "PREGUNTA: ¿qué significa el campo recibido?\n\n"
+        "Contexto:\n[1] (01_diccionario_datos#1)\nEl WMS registra ingresos y salidas.\n\n"
+        "[2] (01_diccionario_datos#4)\nEl campo recibido es la diferencia entre lo recibido y lo ordenado.\n"
+    )
+    response = RuleBasedProvider().complete(system="", user=prompt, task="rag_answer")
+    assert "diferencia entre lo recibido" in response.text
+    assert "01_diccionario_datos#4" in response.text
+
+
 def test_reindex_is_idempotent(seeded: dict[str, int]) -> None:
     before = kb_stats()
     ingest_documents()

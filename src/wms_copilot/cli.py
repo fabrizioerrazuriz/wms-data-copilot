@@ -18,7 +18,7 @@ from .evals.runner import markdown_table, run_evals, save_report
 from .llm.base import LLMError
 from .llm.factory import build_provider, get_llm
 from .pipeline.generate_synthetic import generate_all
-from .pipeline.load import load_all
+from .pipeline.load import load_all, reset_data
 from .rag.ingest import ingest_documents
 from .rag.retriever import kb_stats
 from .telemetry import configure_logging, llm_metrics
@@ -47,6 +47,32 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
             "generated": {name: str(path) for name, path in paths.items()},
             "loads": [asdict(summary) | {"idempotent": summary.idempotent} for summary in summaries],
             "kb": kb,
+            "rows": {table: table_count(table) for table in TABLES},
+        }
+    )
+    return 0
+
+
+def cmd_load(args: argparse.Namespace) -> int:
+    """Carga los CSV que ya existen (no los regenera)."""
+    summaries = load_all()
+    _print([asdict(summary) | {"idempotent": summary.idempotent} for summary in summaries])
+    return 0
+
+
+def cmd_reset(args: argparse.Namespace) -> int:
+    """Borra los datos del WMS y los recarga desde los CSV editados."""
+    if not args.yes:
+        print(
+            "Esto borra los datos del WMS (no la base de conocimiento) y los recarga desde data/raw.\n"
+            "Si es lo que quieres, ejecuta: wms-copilot reset --yes"
+        )
+        return 1
+    summaries = reset_data()
+    _print(
+        {
+            "reset": True,
+            "loads": [asdict(summary) | {"idempotent": summary.idempotent} for summary in summaries],
             "rows": {table: table_count(table) for table in TABLES},
         }
     )
@@ -135,6 +161,13 @@ def build_parser() -> argparse.ArgumentParser:
     bootstrap = sub.add_parser("bootstrap", help="Genera datos sinteticos, carga y indexa la KB")
     bootstrap.add_argument("--force", action="store_true", help="Regenera los CSV desde cero")
     bootstrap.set_defaults(func=cmd_bootstrap)
+
+    load = sub.add_parser("load", help="Carga los CSV existentes sin regenerarlos (respeta tus ediciones)")
+    load.set_defaults(func=cmd_load)
+
+    reset = sub.add_parser("reset", help="Borra los datos del WMS y recarga desde los CSV actuales")
+    reset.add_argument("--yes", action="store_true", help="Confirma el borrado de datos")
+    reset.set_defaults(func=cmd_reset)
 
     ask = sub.add_parser("ask", help="Haz una pregunta al copiloto")
     ask.add_argument("question")
