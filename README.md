@@ -4,8 +4,12 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Copiloto de datos sobre el pipeline de un WMS (retail): **Text-to-SQL con guardrails**, **RAG sobre
+Capa de IA sobre el pipeline de inventario de un WMS (retail): **Text-to-SQL con guardrails**, **RAG sobre
 documentación operativa** y **agente de calidad de datos**, con evaluación automatizada y gate en CI.
+
+Es una **muestra técnica de trabajo real**: reconstruye con **datos sintéticos** el flujo, el esquema y las
+anomalías del WMS que opero en producción. No contiene datos de clientes ni credenciales: todo se genera
+localmente con un *seed* y corre sin API keys.
 
 No es un chatbot de demo: es un sistema con validación de SQL, ejecución de solo lectura, límite de filas,
 timeout, redacción de PII, telemetría de costo/latencia y un *golden set* que corre en cada *pull request*.
@@ -197,7 +201,7 @@ sección nueva → nueva cita) en [docs/experimentos.md](docs/experimentos.md).
 |---|---|---|
 | Routing determinista (no LLM) para clasificar intención | barato, testeable, sin latencia | no generaliza a intenciones nuevas |
 | Números renderizados desde el resultado, no escritos por el modelo | elimina alucinación de cifras | respuestas menos “conversacionales” |
-| Baseline `rule-based` incluido | CI y demo sin API key; permite comparar | hay que mantener reglas |
+| Baseline `rule-based` incluido | CI y demo local sin API key; permite comparar | hay que mantener reglas |
 | Embeddings JSON + coseno en Python | cero infraestructura, portable | no escala a millones de chunks (ver roadmap: pgvector) |
 | Validación estructural separada de reglas de negocio | un ETL que esconde anomalías no sirve | requiere dos capas explícitas |
 
@@ -222,15 +226,29 @@ tests/              55 tests (guardrails, idempotencia, RAG, API, métricas)
 
 ## Limitaciones conocidas
 
-- Los datos son **sintéticos**: reproducen el esquema y las anomalías de un WMS, no datos de un cliente.
+- Los datos son **sintéticos**: reproducen el esquema y las anomalías de un WMS real, no datos de un cliente.
 - El retriever es fuerza bruta en memoria: correcto hasta ~10k chunks; después, `pgvector`.
-- Sin autenticación en la API: es un proyecto de portafolio, no un servicio expuesto.
+- Sin autenticación en la API: es un entorno de demostración, no un servicio expuesto.
 - El juez de calidad de las respuestas es heurístico (soporte numérico), no un LLM-as-judge completo.
 
 ## Stack
 
 Python 3.12 · FastAPI · SQLAlchemy · sqlglot · SQLite/PostgreSQL · Airflow · Docker · GitHub Actions ·
 pytest · ruff · OpenAI / Anthropic / Ollama (intercambiables)
+
+## Contexto
+
+Este repositorio complementa a [wms-data-pipeline](https://github.com/fabrizioerrazuriz/wms-data-pipeline),
+que replica el flujo de carga del WMS (CSV → SQL Server, cargas idempotentes, orquestación con Airflow).
+Aquí se agrega la capa de consumo: preguntar en lenguaje natural, documentación citada y control de calidad.
+
+Ambos son **muestras de cómo trabajo**, no ejercicios de curso: el alcance lo definen los controles
+(validación, solo lectura, límites, evaluación y gate en CI) antes que las *features*, y cada decisión
+tiene su costo anotado en [docs/architecture.md](docs/architecture.md) y en los ADR. Los datos son
+sintéticos para poder compartir el trabajo sin exponer información de ningún cliente.
+
+Fuera de alcance a propósito: autenticación, *multi-tenant* y despliegue gestionado. No aportan a lo que
+la muestra quiere demostrar y sí agregan superficie que mantener.
 
 ## English summary
 
@@ -239,6 +257,11 @@ read-only execution, row limit, timeout), RAG with citations over operational do
 data-quality agent. Ships with a versioned golden set, numeric-faithfulness and latency/cost metrics, and a
 CI regression gate. Runs fully offline with a rule-based baseline, so tests and CI need no API keys.
 
+It is a **technical sample reconstructed from a real production workflow** (retail WMS), with synthetic
+data and no client information: the point is to show the controls —validation, read-only access, limits,
+evaluation, CI gate— not a demo chatbot.
+
 ---
 
-Autor: **Fabrizio Errázuriz** — Data Engineer / Developer · [github.com/fabrizioerrazuriz](https://github.com/fabrizioerrazuriz)
+Autor: **Fabrizio Errázuriz** — Data Engineer · ETL · Python · SQL · Spark · Databricks · Airflow ·
+[github.com/fabrizioerrazuriz](https://github.com/fabrizioerrazuriz)

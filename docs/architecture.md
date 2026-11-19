@@ -1,5 +1,7 @@
 # Arquitectura
 
+Muestra técnica: replica el flujo y el esquema de un WMS de retail en producción, con datos sintéticos.
+
 ## Componentes
 
 | Capa | Módulo | Responsabilidad |
